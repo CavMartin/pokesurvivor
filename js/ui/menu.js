@@ -295,7 +295,9 @@ G.MenuUI = (() => {
         G.Audio.sfx('select');
         renderUpgrades();
       };
-      el.querySelector('[data-buy]').onclick = () => {
+      // LAN: la mega comprada no trae botón de compra (sólo Usar/En uso).
+      const buyBtn = el.querySelector('[data-buy]');
+      if (buyBtn) buyBtn.onclick = () => {
         // Se vuelve a leer todo al pulsar (la partida puede haber cambiado desde que se dibujó).
         const sv = G.DB.save, lv = G.DB.upgradesOf(upgDex), now = lv[u.id] || 0;
         if (now >= u.max) { renderUpgrades(); return; }
