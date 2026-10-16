@@ -1,0 +1,39 @@
+# Infra LAN: juego + emuladores Firebase, todo offline.
+# Se usa desde la raíz del repo:  docker compose up -d
+# Mantiene el nombre de proyecto anterior para reutilizar sus volúmenes.
+name: poke-survivor
+
+services:
+  pokesurvivor-local:
+    image: nginx:alpine
+    container_name: pokesurvivor_local
+    restart: unless-stopped
+    ports:
+      - "8085:80"
+    volumes:
+      - ./:/usr/share/nginx/html:ro
+      - ./emulators/nginx.lan.conf:/etc/nginx/conf.d/default.conf:ro
+
+  # Emuladores Firebase (auth 9099, firestore 8280, RTDB 9201):
+  # login, salas e invitaciones 100% en LAN, sin internet.
+  pokesurvivor-emuladores:
+    build:
+      context: ./emulators
+      dockerfile: Dockerfile.emulators
+    image: pokesurvivor-emuladores:local
+    container_name: pokesurvivor_emuladores
+    restart: unless-stopped
+    ports:
+      - "9099:9099"
+      - "8280:8280"
+      - "9201:9201"
+    volumes:
+      - ./:/app
+      - ./emulators/firebase.lan.json:/app/firebase.lan.json:ro
+      - emu-data:/data
+      - emu-cache:/root/.cache/firebase
+    working_dir: /app
+
+volumes:
+  emu-data:
+  emu-cache:

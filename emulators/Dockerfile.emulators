@@ -1,0 +1,22 @@
+# Emuladores de Firebase para la LAN local (auth + firestore + RTDB).
+# Se construye UNA vez con internet; después arranca sin conexión.
+FROM node:24-bookworm-slim
+
+# Java 21 (Temurin): lo exigen los emuladores de Firestore/RTDB/Auth.
+RUN apt-get update && apt-get install -y --no-install-recommends wget gnupg ca-certificates \
+ && mkdir -p /etc/apt/keyrings \
+ && wget -qO /etc/apt/keyrings/adoptium.asc https://packages.adoptium.net/artifactory/api/gpg/key/public \
+ && echo "deb [signed-by=/etc/apt/keyrings/adoptium.asc] https://packages.adoptium.net/artifactory/deb bookworm main" > /etc/apt/sources.list.d/adoptium.list \
+ && apt-get update && apt-get install -y --no-install-recommends temurin-21-jre \
+ && rm -rf /var/lib/apt/lists/*
+
+RUN npm i -g firebase-tools
+
+# Pre-descarga los jars de los emuladores (por si el primer arranque fuese sin red).
+RUN firebase setup:emulators:firestore database || true
+
+WORKDIR /app
+COPY entrypoint.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
+EXPOSE 9099 8280 9201
+ENTRYPOINT ["/entrypoint.sh"]
