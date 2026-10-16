@@ -710,6 +710,36 @@ G.DB = (() => {
     } catch (e) { return { ok: false, error: authError(e) }; }
   }
 
+  /**
+   * LAN: poner contraseña nueva sin más (sin correo). Sólo con emuladores:
+   * se pide un código de reseteo y se canjea por la API local del emulador.
+   */
+  async function resetPasswordLAN(name, npw) {
+    const cfg = G.FIREBASE_CONFIG;
+    if (!cfg || !cfg.emulator || mode !== 'cloud') return { ok: false, error: 'Recuperar la contraseña necesita la versión LAN.' };
+    name = (name || '').trim();
+    if (!name) return { ok: false, error: 'Escribe tu nombre de jugador.' };
+    if ((npw || '').length < 6) return { ok: false, error: 'La contraseña debe tener al menos 6 caracteres.' };
+    const email = nameToEmail(name);
+    const EH = cfg.emuHost || location.hostname || '127.0.0.1';
+    const base = 'http://' + EH + ':' + (cfg.emuAuthPort || 9099);
+    try {
+      const r1 = await fetch(base + '/identitytoolkit.googleapis.com/v1/accounts:sendOobCode?key=demo', {
+        method: 'POST', headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ requestType: 'PASSWORD_RESET', email }) });
+      if (!r1.ok) return { ok: false, error: 'No existe una cuenta con ese nombre.' };
+      const r2 = await fetch(base + '/emulator/v1/projects/' + cfg.projectId + '/oobCodes', { cache: 'no-store' });
+      if (!r2.ok) throw new Error('oob');
+      const codes = ((await r2.json()).oobCodes || []).filter(o => o.email === email);
+      if (!codes.length) return { ok: false, error: 'No existe una cuenta con ese nombre.' };
+      const r3 = await fetch(base + '/identitytoolkit.googleapis.com/v1/accounts:resetPassword?key=demo', {
+        method: 'POST', headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ oobCode: codes[codes.length - 1].oobCode, newPassword: npw }) });
+      if (!r3.ok) return { ok: false, error: 'No se pudo cambiar (prueba de nuevo).' };
+      return { ok: true };
+    } catch (e) { return { ok: false, error: 'Sin conexión con el servidor local.' }; }
+  }
+
   async function loginWithGoogle() {
     if (mode !== 'cloud') return { ok: false, error: 'Entrar con Google necesita la versión publicada del juego.' };
     try {
@@ -860,7 +890,7 @@ G.DB = (() => {
   }
 
   return {
-    ready, register, login, loginWithGoogle, playAsGuest, logout, commit, deleteAccount, flush: pushNow,
+    ready, register, login, resetPasswordLAN, loginWithGoogle, playAsGuest, logout, commit, deleteAccount, flush: pushNow,
     owns, grant, ownsShiny, grantShiny, merge, setName, upgradesOf,
     onSync(fn) { listeners.add(fn); },
     onLeave(fn) { leaveHooks.push(fn); },

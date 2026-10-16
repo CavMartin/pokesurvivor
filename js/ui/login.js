@@ -19,10 +19,28 @@ G.LoginUI = (() => {
       G.Flow.afterLogin();
     };
     $('btn-guest').onclick = () => { G.DB.playAsGuest(); G.Flow.afterLogin(); };
+    // LAN: recuperar es poner contraseña nueva, sin más.
     $('f-forgot').onclick = e => {
       e.preventDefault();
       $('login-err').textContent = '';
-      $('forgot-note').classList.toggle('hidden');
+      const who = ($('f-user').value || '').trim();
+      if (!who) { $('login-err').textContent = 'Escribe tu nombre de jugador arriba.'; return; }
+      $('forgot-who').textContent = who;
+      $('forgot-err').textContent = '';
+      $('f-newpass').value = ''; $('f-newpass2').value = '';
+      $('forgot-form').classList.toggle('hidden');
+    };
+    $('btn-newpass').onclick = async () => {
+      $('forgot-err').textContent = '';
+      const who = ($('f-user').value || '').trim();
+      const a = $('f-newpass').value, b = $('f-newpass2').value;
+      if (a !== b) { $('forgot-err').textContent = 'No coinciden.'; return; }
+      $('btn-newpass').disabled = true;
+      const r = await G.DB.resetPasswordLAN(who, a);
+      $('btn-newpass').disabled = false;
+      if (!r.ok) { $('forgot-err').textContent = r.error; return; }
+      $('forgot-form').classList.add('hidden');
+      G.UI.toast('Contraseña actualizada: ya puedes entrar.', 4000);
     };
   }
 

@@ -106,7 +106,17 @@
       <input id="f-pass" class="field" type="password" maxlength="64">
       <p id="login-err" class="err"></p>
       <p class="note"><a href="#" id="f-forgot">¿Olvidaste tu contraseña?</a></p>
-      <p id="forgot-note" class="note hidden">Sin conexión a internet no se puede recuperar: crea una cuenta nueva.</p>
+      <div id="forgot-form" class="hidden">
+        <p class="note">Contraseña nueva para <b><span id="forgot-who"></span></b>:</p>
+        <label for="f-newpass">Contraseña nueva</label>
+        <input id="f-newpass" class="field" type="password" maxlength="64" autocomplete="new-password">
+        <label for="f-newpass2">Repite la contraseña</label>
+        <input id="f-newpass2" class="field" type="password" maxlength="64" autocomplete="new-password">
+        <p id="forgot-err" class="err"></p>
+        <div class="row">
+          <button id="btn-newpass" class="btn gold grow" type="button">Poner contraseña nueva</button>
+        </div>
+      </div>
       <div class="row">
         <button id="btn-auth" class="btn gold grow" type="submit">Entrar</button>
       </div>
