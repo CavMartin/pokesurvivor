@@ -29,7 +29,6 @@ services:
       - "9201:9201"
     volumes:
       - ./:/app
-      - ./emulators/firebase.lan.json:/app/firebase.lan.json:ro
       - emu-data:/data
       - emu-cache:/root/.cache/firebase
     working_dir: /app
@@ -37,3 +36,4 @@ services:
 volumes:
   emu-data:
   emu-cache:
+
