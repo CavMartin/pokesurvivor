@@ -36,12 +36,13 @@ G.MenuUI = (() => {
     const s = G.DB.save;
     const mon = G.DEX_BY[s.partner];
     const shiny = !!s.partnerShiny && G.DB.ownsShiny(mon.dex);
+    const mega = G.MEGA.active(s);   // LAN: megaevolución activa del compañero
     G.UI.chrome(true);
     G.UI.show('scr-menu');
-    G.UI.sprite($('menu-partner'), mon.dex, { lively: true, scale: 4, hero: true, shiny });
-    $('menu-partner').style.setProperty('--stage-c', shiny ? '#9ae6ff' : G.U.TYPE_COLOR[mon.types[0]]);
-    $('menu-partner').classList.toggle('shiny', shiny);
-    $('menu-partner-name').innerHTML = mon.name + (shiny ? ' ' + G.Icons.html('shiny', 24) : '');
+    G.UI.sprite($('menu-partner'), mega ? mega.key : mon.dex, { lively: true, scale: 4, hero: true, shiny: !mega && shiny });
+    $('menu-partner').style.setProperty('--stage-c', shiny && !mega ? '#9ae6ff' : G.U.TYPE_COLOR[mon.types[0]]);
+    $('menu-partner').classList.toggle('shiny', shiny && !mega);
+    $('menu-partner-name').innerHTML = G.MEGA.dispName(mon.dex, mega) + (!mega && shiny ? ' ' + G.Icons.html('shiny', 24) : '');
     $('menu-partner-info').innerHTML = G.UI.typeChips(mon.types) + ' ' + G.UI.stars(mon.rarity);
     // Normal / shiny a mano, aquí mismo (en el móvil no se encontraba en la ficha).
     const seg = $('menu-shiny');
@@ -252,14 +253,22 @@ G.MenuUI = (() => {
     const levels = G.DB.upgradesOf(upgDex);
     const mon = G.DEX_BY[upgDex];
     const shiny = upgDex === s.partner && !!s.partnerShiny && G.DB.ownsShiny(upgDex);
-    G.UI.sprite($('upg-stage'), upgDex, { lively: true, scale: 2, hero: true, shiny });
+    G.UI.sprite($('upg-stage'), megaShown ? megaShown.key : upgDex, { lively: true, scale: 2, hero: true, shiny: !megaShown && shiny });
     $('upg-stage').style.setProperty('--stage-c', shiny ? '#9ae6ff' : G.U.TYPE_COLOR[mon.types[0]]);
+    const megaShown = G.MEGA.selected(s, upgDex);   // LAN: preview de la mega activa
     const box = $('upg-list');
     box.innerHTML = '';
     for (const u of G.Upgrades.LIST) {
+      if (u.mega && u.mega.dex !== upgDex) continue;   // LAN: megas sólo de su especie
       const lvl = levels[u.id] || 0;
       const maxed = lvl >= u.max;
       const cost = maxed ? 0 : G.Upgrades.cost(u.id, lvl);
+      // LAN (megas): desbloqueo a nivel 100 + activar/desactivar.
+      const isMega = !!u.mega;
+      const need = isMega ? G.MEGA.needTotal() : 0;
+      const have = isMega ? G.MEGA.haveTotal(levels) : 0;
+      const locked = isMega && lvl <= 0 && have < need;
+      const isActive = isMega && lvl > 0 && s.pmega && s.pmega[upgDex] === u.id;
       const el = document.createElement('div');
       el.className = 'panel upg-item';
       el.innerHTML = `
@@ -270,9 +279,22 @@ G.MenuUI = (() => {
         </div>
         <div class="upg-btns">
           ${u.id === 'ban' && lvl > 0 ? `<button class="btn small" data-ban>Elegir (${banList().length}/${lvl})</button>` : ''}
-          <button class="btn small ${maxed ? '' : 'gold'}" data-buy data-sfx="none" ${maxed || s.coins < cost ? 'disabled' : ''}>
-          ${maxed ? 'Máx.' : `<span class="coin"></span> ${cost}`}</button></div>`;
+          ${isMega && lvl > 0
+            ? `<button class="btn small ${isActive ? '' : 'gold'}" data-mega data-sfx="none">${isActive ? 'En uso' : 'Usar'}</button>`
+            : `<button class="btn small ${maxed || locked ? '' : 'gold'}" data-buy data-sfx="none" ${maxed || locked || s.coins < cost ? 'disabled' : ''}>
+          ${maxed ? 'Máx.' : locked ? `Nivel ${have}/${need}` : `<span class="coin"></span> ${cost}`}</button>`}</div>`;
       if (u.id === 'ban' && lvl > 0) el.querySelector('[data-ban]').onclick = () => { banOpen = !banOpen; renderUpgrades(); };
+      // LAN: activar/desactivar la mega comprada.
+      const megaBtn = el.querySelector('[data-mega]');
+      if (megaBtn) megaBtn.onclick = () => {
+        const sv = G.DB.save;
+        sv.pmega = sv.pmega || {};
+        if (sv.pmega[upgDex] === u.id) delete sv.pmega[upgDex];
+        else sv.pmega[upgDex] = u.id;
+        G.DB.commit(true);
+        G.Audio.sfx('select');
+        renderUpgrades();
+      };
       el.querySelector('[data-buy]').onclick = () => {
         // Se vuelve a leer todo al pulsar (la partida puede haber cambiado desde que se dibujó).
         const sv = G.DB.save, lv = G.DB.upgradesOf(upgDex), now = lv[u.id] || 0;
@@ -281,6 +303,7 @@ G.MenuUI = (() => {
         if (sv.coins < price) { renderUpgrades(); return; }
         sv.coins -= price;
         lv[u.id] = now + 1;
+        if (u.mega) { sv.pmega = sv.pmega || {}; sv.pmega[upgDex] = u.id; }   // LAN: comprar la mega la activa
         G.DB.commit(true);
         G.Audio.sfx('buy');
         G.UI.refreshCoins();

@@ -90,6 +90,7 @@ G.Game = (() => {
     const save = G.DB.save;
     const mon = G.DEX_BY[save.partner];
     const perks = G.Upgrades.perks(G.DB.upgradesOf(mon.dex));
+    const mega = G.MEGA.active(save);   // LAN: megaevolución activa del compañero (o null)
 
     G.UI.hideAll();
     G.UI.chrome(false);
@@ -111,7 +112,7 @@ G.Game = (() => {
     time = 0; pendingLevels = 0;
     runReal = performance.now(); tampered = false;
 
-    pl = new G.Player(mon, perks, !!save.partnerShiny && G.DB.ownsShiny(mon.dex));
+    pl = new G.Player(mon, perks, !!save.partnerShiny && G.DB.ownsShiny(mon.dex), mega);
     banked = { t1: 0, t10: 0 };
     caught = [];
     // Atajos: movimientos con hueco fijo (save.pbind[dex] = [id del 1, id del 2, ...]),

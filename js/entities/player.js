@@ -8,14 +8,18 @@ G.Player = class Player {
    * @param mon   entrada de G.DEX
    * @param perks mejoras permanentes ya resueltas (ver data/upgrades.js)
    */
-  constructor(mon, perks = {}, shiny = false) {
+  constructor(mon, perks = {}, shiny = false, mega = null) {
     this.mon = mon;
     this.dex = mon.dex;
-    this.shiny = shiny && G.Sprites.hasShiny(mon.dex);
-    this.anim = new G.Sprites.Animator(mon.dex, 1, this.shiny);
+    // LAN (megas): la especie no cambia; sólo sprite (sdex) y stats.
+    this.mega = mega && mega.dex === mon.dex ? mega : null;
+    this.sdex = this.mega ? this.mega.key : mon.dex;
+    this.dispName = this.mega ? this.mega.name : mon.name;
+    this.shiny = shiny && G.Sprites.hasShiny(this.sdex);
+    this.anim = new G.Sprites.Animator(this.sdex, 1, this.shiny);
     this.x = 0; this.y = 0;
-    this.r = G.Sprites.bodyRadius(mon.dex);
-    this.bodyH = G.Sprites.bodyHeight(mon.dex);
+    this.r = G.Sprites.bodyRadius(this.sdex);
+    this.bodyH = G.Sprites.bodyHeight(this.sdex);
 
     this.atkMul = perks.atkMul || 1;
     this.spdMul = perks.spdMul || 1;
@@ -28,6 +32,11 @@ G.Player = class Player {
 
     this.maxHp = mon.hp + (perks.hp || 0);
     this.hp = this.maxHp;
+    if (this.mega) {   // LAN: bonus genérico de la megaevolución (POC).
+      this.maxHp += this.mega.hp; this.hp = this.maxHp;
+      this.atkMul *= this.mega.atk; this.cdMul *= this.mega.cd;
+      this.dmgReduce += this.mega.def;
+    }
     this.baseSpd = mon.spd;
     this.baseAtk = mon.atk;
 
@@ -478,7 +487,7 @@ G.Player = class Player {
       ctx.beginPath(); ctx.ellipse(this.x, this.y, this.r * 1.5, this.r * 0.6, 0, 0, 6.2832); ctx.stroke();
       ctx.restore();
     }
-    G.Sprites.drawShadow(ctx, this.dex, this.x, this.y);
+    G.Sprites.drawShadow(ctx, this.sdex, this.x, this.y);
     // Poder de altar: aro de su color latiendo bajo los pies.
     if (this.power && !this.dead) {
       ctx.save();
