@@ -4,6 +4,6 @@
  *   coins: multiplicador de Pokémonedas recogidas (1 = original).
  */
 window.LAN = {
-  xp: 1,
-  coins: 1
+  xp: 10,
+  coins: 100
 };

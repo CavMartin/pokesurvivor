@@ -253,9 +253,9 @@ G.MenuUI = (() => {
     const levels = G.DB.upgradesOf(upgDex);
     const mon = G.DEX_BY[upgDex];
     const shiny = upgDex === s.partner && !!s.partnerShiny && G.DB.ownsShiny(upgDex);
+    const megaShown = G.MEGA.selected(s, upgDex);   // LAN: preview de la mega activa
     G.UI.sprite($('upg-stage'), megaShown ? megaShown.key : upgDex, { lively: true, scale: 2, hero: true, shiny: !megaShown && shiny });
     $('upg-stage').style.setProperty('--stage-c', shiny ? '#9ae6ff' : G.U.TYPE_COLOR[mon.types[0]]);
-    const megaShown = G.MEGA.selected(s, upgDex);   // LAN: preview de la mega activa
     const box = $('upg-list');
     box.innerHTML = '';
     for (const u of G.Upgrades.LIST) {
