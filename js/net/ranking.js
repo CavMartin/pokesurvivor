@@ -380,7 +380,10 @@ G.Ranking = (() => {
   async function countAbove(b, t) {
     const fb = fbx();
     const cfg = G.FIREBASE_CONFIG;
-    const base = fb.emulator ? 'http://127.0.0.1:8080/v1' : 'https://firestore.googleapis.com/v1';
+    // LAN local: el REST del emulador vive en el anfitrión (emuHost/emuFsPort).
+    const EH = (cfg && (cfg.emuHost || location.hostname)) || '127.0.0.1';
+    const EP = (cfg && cfg.emuFsPort) || 8080;
+    const base = fb.emulator ? 'http://' + EH + ':' + EP + '/v1' : 'https://firestore.googleapis.com/v1';
     const url = `${base}/projects/${cfg.projectId}/databases/(default)/documents/lb/${encodeURIComponent(b)}:runAggregationQuery`;
     const token = await fb.auth.currentUser.getIdToken();
     const body = { structuredAggregationQuery: {

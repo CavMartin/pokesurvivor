@@ -37,11 +37,14 @@ G.Player = class Player {
     this.maxMoves = 4;         // huecos
     this.bonds = 0;            // vínculos por usar (premio de los legendarios)
 
+    // LAN: cada pool suma por fuente (`by`: id de movimiento -> { n, amount }),
+    // así Danza Espada + Danza Dragón acumulan ataque en vez de pisarse.
     this.buffs = {
-      atk: { n: 0, t: 0, amount: 0 },
-      spd: { n: 0, t: 0, amount: 0 },
-      def: { n: 0, t: 0, amount: 0 },
-      regen: { n: 0, t: 0, amount: 0 }
+      atk: { n: 0, t: 0, bonus: 0, by: {} },
+      spd: { n: 0, t: 0, bonus: 0, by: {} },
+      def: { n: 0, t: 0, bonus: 0, by: {} },
+      regen: { n: 0, t: 0, bonus: 0, by: {} },
+      cdr: { n: 0, t: 0, bonus: 0, by: {} }   // LAN: reducción de recarga (Danza Dragón)
     };
 
     this.level = 1;
@@ -71,6 +74,8 @@ G.Player = class Player {
     this.slowT = 0;            // pegado por una trampa
     this.item = null;          // objeto equipado (data/items.js), uno por run
     this.sashT = -999;         // última vez que salvó la Banda Focus
+    // LAN (evos Reforzadas): último bloqueo, cura y esquiva mortal.
+    this.hardenT = -999; this.aquaT = -999; this.agiT = -999;
     this.bellHeal = 0;         // curación pendiente del Cascabel Concha
     this.statsTaken = {};      // mejoras de stat cogidas (condición de evolución)
   }
@@ -86,15 +91,15 @@ G.Player = class Player {
   cy() { return this.y; }
 
   // ---------------- stats efectivos ----------------
-  get atk() { return this.baseAtk * this.atkMul * (1 + this.buffs.atk.n * this.buffs.atk.amount); }
+  get atk() { return this.baseAtk * this.atkMul * (1 + this.buffs.atk.bonus); }
   get spd() {
-    const s = this.baseSpd * this.spdMul * (1 + this.buffs.spd.n * this.buffs.spd.amount) * (this.slowT > 0 ? 0.5 : 1);
+    const s = this.baseSpd * this.spdMul * (1 + this.buffs.spd.bonus) * (this.slowT > 0 ? 0.5 : 1);
     const w = G.Weather.speedFor(this.mon.types);
     const slow = this.inLiquid ? G.World.liquidEffect(this.mon.types).slow || 1 : 1;
     return s * slow * w;
   }
-  get reduction() { return Math.min(0.8, this.dmgReduce + this.buffs.def.n * this.buffs.def.amount); }
-  get regen() { return this.regenFlat + this.buffs.regen.n * this.buffs.regen.amount; }
+  get reduction() { return Math.min(0.8, this.dmgReduce + this.buffs.def.bonus); }
+  get regen() { return this.regenFlat + this.buffs.regen.bonus; }
 
   // ---------------- movimientos ----------------
   addMove(id) {
@@ -237,6 +242,16 @@ G.Player = class Player {
     // estar encima de los enemigos para pegar (iban muy por detrás).
     const close = this.activeGroup().some(m => m.kind === 'melee') ? 0.75 : 1;
     const d = pure ? Math.max(1, amount) : Math.max(1, amount * (1 - this.reduction) * close);
+    // LAN (Fortaleza Reforzada): al máximo de cargas, bloquea un golpe cada 15 s.
+    const harden = this.moves.find(m => m.id === 'harden' && m.evolved);
+    if (harden && this.buffs.def.n >= harden.stacks && performance.now() - this.hardenT > 15000) {
+      this.hardenT = performance.now();
+      this.invuln = 0.45;
+      G.Audio.sfx('select');
+      G.FX.dmgText(this.x, this.y - this.bodyH - 4, '¡Bloqueo!', '#b0b8c8', true);
+      G.FX.ring(this.x, this.y, 6, 70, '#b0b8c8', 0.5, 4);
+      return;
+    }
     this.hp -= d;
     this.invuln = 0.45;
     this.flash = 0.14;
@@ -250,6 +265,15 @@ G.Player = class Player {
       this.hp = 1; this.invuln = 1.2;
       G.FX.dmgText(this.x, this.y - this.bodyH - 16, '¡Banda Focus!', '#ff9a3d', true);
       G.FX.ring(this.x, this.y, 6, 70, '#ff9a3d', 0.5, 4);
+    }
+    // LAN (Agilidad Reforzada): al máximo de cargas y con el buff activo,
+    // esquiva la muerte una vez cada 60 s.
+    const agi = this.moves.find(m => m.id === 'agility' && m.evolved);
+    if (this.hp <= 0 && agi && this.buffs.spd.n >= agi.stacks && performance.now() - this.agiT > 60000) {
+      this.agiT = performance.now();
+      this.hp = 1; this.invuln = 1.2;
+      G.FX.dmgText(this.x, this.y - this.bodyH - 16, '¡Agilidad Reforzada!', '#7fe0ff', true);
+      G.FX.ring(this.x, this.y, 6, 70, '#7fe0ff', 0.5, 4);
     }
     if (this.hp <= 0) {
       this.hp = 0; this.dead = true;
@@ -270,13 +294,19 @@ G.Player = class Player {
 
   /** Devuelve cuántos niveles ha subido (pueden ser varios de golpe). */
   gainXp(amount) {
-    this.xp += amount * this.xpMul;
+    // LAN: +50% de experiencia base sobre todo lo ganado.
+    this.xp += amount * this.xpMul * 1.5;
     let leveled = 0;
     while (this.xp >= this.xpNext) {
       this.xp -= this.xpNext;
       this.level++;
       this.xpNext = Player.xpFor(this.level);
       leveled++;
+      // LAN: cada 10 niveles, +1 cambio de cartas de nivel.
+      if (this.level % 10 === 0) {
+        this.rerollBonus++;
+        if (G.UI && G.UI.toast) G.UI.toast('¡Nivel ' + this.level + ': +1 cambio de cartas!', 2500);
+      }
     }
     return leveled;
   }
@@ -303,11 +333,16 @@ G.Player = class Player {
     this.power = { def, t: dur, dur };
   }
 
-  addBuff(stat, amount, dur, maxStacks) {
+  addBuff(stat, amount, dur, maxStacks, src) {
     const b = this.buffs[stat];
     if (!b) return;
-    b.amount = amount;
-    b.n = Math.min(maxStacks, b.n + 1);
+    const s = b.by[src] || (b.by[src] = { n: 0, amount: 0 });
+    s.amount = amount;
+    s.n = Math.min(maxStacks, s.n + 1);
+    // Recomputa el pool: suma de cargas × potencia por fuente.
+    let n = 0, bonus = 0;
+    for (const k in b.by) { n += b.by[k].n; bonus += b.by[k].n * b.by[k].amount; }
+    b.n = n; b.bonus = bonus;
     b.t = dur;
   }
 
@@ -321,7 +356,7 @@ G.Player = class Player {
 
     for (const k in this.buffs) {
       const b = this.buffs[k];
-      if (b.n > 0) { b.t -= dt; if (b.t <= 0) b.n = 0; }
+      if (b.n > 0) { b.t -= dt; if (b.t <= 0) { b.n = 0; b.bonus = 0; b.by = {}; } }
     }
     if (this.slowT > 0) this.slowT -= dt;
     if (this.bellHeal > 0) { const h = Math.min(this.bellHeal, 4 * dt); this.hp = Math.min(this.maxHp, this.hp + h); this.bellHeal -= h; }
@@ -457,7 +492,7 @@ G.Player = class Player {
     this.anim.draw(ctx, this.x, this.y, { flash: this.flash > 0, softFlash: true, alpha, color: '#ffcb3d' });
 
     // Arcos de buff alrededor de los pies.
-    const COL = { atk: '#ff6b4d', spd: '#7fe0ff', def: '#b0b8c8', regen: '#5fe08a' };
+    const COL = { atk: '#ff6b4d', spd: '#7fe0ff', def: '#b0b8c8', regen: '#5fe08a', cdr: '#c47bff' };
     let i = 0;
     for (const k in this.buffs) {
       const b = this.buffs[k];

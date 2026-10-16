@@ -99,7 +99,7 @@ G.Rift = (() => {
     const mon = pool[mi];
     const cfg = {
       tx: 5000 + Math.floor(Math.random() * 3000), ty: 5000 + Math.floor(Math.random() * 3000), r: ARENA_R,
-      dex: mon.dex, shiny: G.Sprites.hasShiny(mon.dex) && Math.random() < 1 / 512,
+      dex: mon.dex, shiny: G.Sprites.hasShiny(mon.dex) && Math.random() < 10 / 512,   // LAN: x10 en combate
       // La arena es la de uno de sus tipos, al azar.
       type: forceType || G.U.pick(mon.types)
     };

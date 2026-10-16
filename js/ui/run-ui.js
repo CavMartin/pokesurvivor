@@ -2,6 +2,7 @@
 G.RunUI = (() => {
   const $ = G.UI.$;
   let offers = null, offerCb = null, coopMode = false;
+  let armed = -1;   // LAN: carta de movimiento nuevo pendiente de confirmar
 
   /** @param coop  en grupo: tras elegir, se queda esperando a los demás */
   function showLevelUp(level, list, cb, coop = false) {
@@ -16,13 +17,13 @@ G.RunUI = (() => {
   }
 
   /**
-   * Cambiar las cartas: 1 vez gratis por partida y 1 más por cada jefe
-   * derrotado (en grupo cuentan los jefes del equipo; cada uno tiene los suyos).
+   * Cambiar las cartas: 5 gratis por partida (+1 cada 10 niveles, ver gainXp),
+   * más los comprados en Mejoras y las cartas +5.
    */
   function rerollsLeft() {
     const p = G.Game.player;
-    // 1 gratis + los comprados en Mejoras (antes, 1 más por cada jefe).
-    return p ? Math.max(0, 1 + (p.rerollBonus || 0) - (p.rerolls || 0)) : 0;
+    // 5 gratis + bonus (Mejoras, cartas, niveles) − usados.
+    return p ? Math.max(0, 5 + (p.rerollBonus || 0) - (p.rerolls || 0)) : 0;
   }
 
   function reroll() {
@@ -33,8 +34,24 @@ G.RunUI = (() => {
     renderCards(G.LevelUp.offer(p));
   }
 
+  /** Marca la carta armada y muestra el aviso de confirmación. */
+  function paintArmed() {
+    $('cards').querySelectorAll('.card').forEach((el, j) => el.classList.toggle('armed', j === armed));
+    const hint = $('lvl-confirm'), c = offers && offers[armed];
+    if (c) {
+      hint.innerHTML = '¿Aprender <b>' + c.title + '</b>? Vuelve a pulsar para confirmar.';
+      hint.classList.remove('hidden');
+    } else hint.classList.add('hidden');
+  }
+
+  function hideConfirm() {
+    $('lvl-confirm').classList.add('hidden');
+    $('cards').querySelectorAll('.card.armed').forEach(el => el.classList.remove('armed'));
+  }
+
   function renderCards(list) {
     offers = list;
+    armed = -1; hideConfirm();
     const left = rerollsLeft();
     $('lvl-rr-n').textContent = left;
     $('lvl-reroll').classList.toggle('hidden', left <= 0);
@@ -61,7 +78,16 @@ G.RunUI = (() => {
 
   function pick(i) {
     if (!offers || !offers[i]) return;
-    const c = offers[i], cb = offerCb;
+    const c = offers[i];
+    // LAN: aprender un movimiento nuevo pide segunda pulsación (clic o tecla).
+    if (c.type === 'new' && armed !== i) {
+      armed = i;
+      paintArmed();
+      G.Audio.sfx('select');
+      return;
+    }
+    armed = -1; hideConfirm();
+    const cb = offerCb;
     offers = null; offerCb = null;
     $('lvl-reroll').classList.add('hidden');
     if (coopMode) {
@@ -138,6 +164,27 @@ G.RunUI = (() => {
       }
     }
     G.UI.show('scr-over');
+  }
+
+  /** LAN: llevas las manos vacías: ¿equipar el objeto o dejarlo (se pierde)? */
+  function showItemTake(next, cb) {
+    const box = $('item-cards');
+    box.innerHTML = '';
+    const it = G.Items.BY[next];
+    const opts = [
+      { icon: G.Icons.html(next, 36), title: 'Equiparme con ' + it.name, desc: it.desc, id: next, cls: ' evo' },
+      { icon: G.Icons.html('ban', 36), title: 'Dejarlo', desc: 'Seguir sin objeto (se pierde).', id: null, cls: '' }
+    ];
+    opts.forEach((o, i) => {
+      const el = document.createElement('div');
+      el.className = 'card' + o.cls;
+      el.innerHTML = `<div class="ico">${o.icon}</div>
+        <div class="txt"><div class="nm">${o.title}</div><div class="ds">${o.desc}</div></div>
+        <div class="key">${i + 1}</div>`;
+      el.onclick = () => { G.UI.hide('scr-item'); cb(o.id); };
+      box.appendChild(el);
+    });
+    G.UI.show('scr-item');
   }
 
   /** Has encontrado un objeto llevando ya otro: ¿con cuál te quedas? */
@@ -233,5 +280,5 @@ G.RunUI = (() => {
     $('btn-quit').onclick = onQuit;
   }
 
-  return { showLevelUp, reroll, showItemChoice, showBond, pickBond, bondBack, pick, setWaiting, closeLevelUp, showOver, wirePause, showPause };
+  return { showLevelUp, reroll, showItemChoice, showItemTake, showBond, pickBond, bondBack, pick, setWaiting, closeLevelUp, showOver, wirePause, showPause };
 })();

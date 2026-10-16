@@ -175,7 +175,7 @@
 
     { id: 'aqua-ring', name: 'Acua Aro', type: 'water', kind: 'buff',
       desc: 'No hace daño: acumula REGENERACIÓN de vida.',
-      cd: 0.90, stat: 'regen', amount: 1.6, dur: 8, stacks: 4 },
+      cd: 0.90, stat: 'regen', amount: 2.0, dur: 8, stacks: 4 },
 
     // ---------------- PLANTA ----------------
     { id: 'vine-whip', name: 'Látigo Cepa', type: 'grass', kind: 'melee',
@@ -317,8 +317,8 @@
       cd: 1.0, dmg: 24, radius: 230, width: 34 },
 
     { id: 'dragon-dance', name: 'Danza Dragón', type: 'dragon', kind: 'buff',
-      desc: 'No hace daño: acumula ATAQUE más rápido que Danza Espada.',
-      cd: 0.7, stat: 'atk', amount: 0.11, dur: 7, stacks: 5 },
+      desc: 'No hace daño: acumula ATAQUE (menos que Danza Espada) y RECARGA más rápida.',
+      cd: 0.7, stat: 'atk', amount: 0.08, stat2: 'cdr', amount2: 0.03, dur: 7, stacks: 5 },
 
     // ---------------- HADA ----------------
     { id: 'fairy-wind', name: 'Viento Feérico', type: 'fairy', kind: 'nova',
@@ -483,7 +483,8 @@
   /*
    * Un movimiento al NIVEL MÁXIMO evoluciona si en esa run has cogido alguna
    * vez la mejora de su condición (`needs`, un id de LevelUp.STATS). Sale una
-   * carta dorada. Los potenciadores (buff) no evolucionan.
+   * carta dorada. LAN: los potenciadores (buff) también evolucionan
+   * (Reforzado/a: duración a 15 s + efecto propio).
    */
   const NEED_NAME = { hp: 'Vigor', atk: 'Potencia', spd: 'Carrera', cd: 'Reflejos', def: 'Coraza',
                       rgn: 'Síntesis', mag: 'Imán', xp: 'Aprendizaje' };
@@ -517,7 +518,13 @@
     'hail': ['Alud', 'cd'],                  'meteor-mash': ['Bomba Imán', 'atk'],
     'will-o-wisp': ['Infierno', 'cd'],       'substitute': ['Doble Equipo', 'def'],
     'aerial-ace': ['Acróbata', 'spd'],       'flame-wheel': ['Envite Ígneo', 'spd'],
-    'bubble-beam': ['Acua Cola', 'atk'],     'hex': ['Poltergeist', 'mag']
+    'bubble-beam': ['Acua Cola', 'atk'],     'hex': ['Poltergeist', 'mag'],
+    // LAN (potenciadores Reforzados): evolucionan al nivel máximo + su stat.
+    'swords-dance': ['Danza Espada Reforzada', 'atk'],
+    'dragon-dance': ['Danza Dragón Reforzada', 'cd'],
+    'harden': ['Fortaleza Reforzada', 'def'],
+    'aqua-ring': ['Acua Aro Reforzado', 'rgn'],
+    'agility': ['Agilidad Reforzada', 'spd']
   };
   // Lo que gana al evolucionar, según cómo funcione.
   const EVO_MODS = {
@@ -534,7 +541,9 @@
     turret:     { t: '×1,8 daño, +1 a la vez y dispara más rápido', m: { dmg: 1.8, count: 1, rate: 0.8 } },
     dash:       { t: '×1,9 daño, más distancia y menos recarga', m: { dmg: 1.9, radius: 1.25, cd: 0.8 } },
     trail:      { t: '×1,8 daño, charcos más grandes y duraderos', m: { dmg: 1.8, radius: 1.25, dur: 1.3 } },
-    cone:       { t: '×1,7 daño, +4 disparos y +1 perforación', m: { dmg: 1.7, count: 4, pierce: 1 } }
+    cone:       { t: '×1,7 daño, +4 disparos y +1 perforación', m: { dmg: 1.7, count: 4, pierce: 1 } },
+    // LAN: los buff no usan multiplicadores; evolve() les pone dur 15 s.
+    buff:       { t: 'Duración a 15 s y efecto Reforzado', m: {} }
   };
 
   /** ¿Puede evolucionar ya? → { name, needs, needName, text, ready } o null */
@@ -551,6 +560,8 @@
     const e = EVO[m.id];
     if (!e || m.evolved) return false;
     applyMods(m, EVO_MODS[m.kind].m);
+    // LAN (buffs Reforzados): duración a 15 s.
+    if (m.kind === 'buff') m.dur = 15;
     m.baseName = m.name;
     m.name = e[0];
     m.evolved = true;

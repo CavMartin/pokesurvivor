@@ -29,7 +29,9 @@ G.DB = (() => {
   const K_CLOUD = 'ps.cloud.', K_MIGRATED = 'ps.migrated.';
   const VERSION = 3;
   const START_COINS = 500;
-  const SDK = 'https://www.gstatic.com/firebasejs/13.0.0/';
+  // LAN local: SDK servido por nuestro nginx (vendor/), sin depender de gstatic.
+  // Para volver al CDN oficial, poner aquí 'https://www.gstatic.com/firebasejs/13.0.0/'.
+  const SDK = '/vendor/firebase/13.0.0/';
   const NAME_DOMAIN = 'jugadores.pokesurvivor.net';   // sólo para el email interno
 
   let mode = 'local';       // 'cloud' | 'local'
@@ -441,11 +443,14 @@ G.DB = (() => {
     // invitaciones): Firebase prueba otra forma de recibirlas si hace falta.
     try { fs.settings({ experimentalAutoDetectLongPolling: true }); } catch (e) { /* ya estaba */ }
     rtdb = cfg.databaseURL ? firebase.database() : null;
-    // Sólo para pruebas: { ..., emulator: true } usa el emulador local de Firebase.
+    // LAN local: { ..., emulator: true } usa los emuladores del PC anfitrión.
+    // El host sale de la config (location.hostname: vale para el anfitrión y
+    // para cada invitado de la LAN); los puertos, de emu*Port (ver config).
     if (cfg.emulator) {
-      auth.useEmulator('http://127.0.0.1:9099');
-      fs.useEmulator('127.0.0.1', 8080);
-      if (rtdb) rtdb.useEmulator('127.0.0.1', 9000);
+      const EH = cfg.emuHost || location.hostname || '127.0.0.1';
+      auth.useEmulator('http://' + EH + ':' + (cfg.emuAuthPort || 9099));
+      fs.useEmulator(EH, cfg.emuFsPort || 8080);
+      if (rtdb) rtdb.useEmulator(EH, cfg.emuDbPort || 9000);
     }
     await auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL);
     auth.languageCode = 'es';

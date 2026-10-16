@@ -427,7 +427,8 @@ G.Game = (() => {
     if (openItem && !G.UI.isOpen('scr-item')) {
       const o = openItem;
       if (o.mine) { state = 'choice'; if (G.Coop.active) G.Coop.holdStart(); }
-      G.RunUI.showItemChoice(o.cur, o.next, o.take);
+      if (o.cur) G.RunUI.showItemChoice(o.cur, o.next, o.take);
+      else G.RunUI.showItemTake(o.next, o.take);
       return;
     }
     if (laterItems.length) offerItem(laterItems.shift());
@@ -450,7 +451,17 @@ G.Game = (() => {
       if (G.Coop.active) G.Coop.holdEnd();
       afterLevelUp();
     };
-    if (!pl.item) { take(id); return; }
+    // LAN: aunque no lleves ninguno, se pregunta antes de equiparlo (pausa igual).
+    if (!pl.item) {
+      if (state === 'playing' || state === 'held') {
+        mine = true;
+        state = 'choice';
+        if (G.Coop.active) G.Coop.holdStart();
+      }
+      openItem = { cur: null, next: id, take, get mine() { return mine; } };
+      G.RunUI.showItemTake(id, take);
+      return;
+    }
     if (pl.item === id) { G.Spawner.say('Ya llevas ' + G.Items.BY[id].name, 2, true); return; }
     // Se para el juego mientras eliges; en grupo, para todos (como con las
     // fusiones). Antes en grupo seguía y te pegaban mientras elegías.
@@ -478,8 +489,10 @@ G.Game = (() => {
       return;
     }
     if (p.kind === 'coin') {
-      pl.coins += p.value;
-      G.FX.dmgText(who.x, who.y - who.bodyH - 6, '+' + p.value, '#ffd23f');
+      // LAN: oro base x10 (se muestra lo realmente ganado).
+      const g = p.value * 10;
+      pl.coins += g;
+      G.FX.dmgText(who.x, who.y - who.bodyH - 6, '+' + g, '#ffd23f');
       return;
     }
     if (p.kind === 'item') {

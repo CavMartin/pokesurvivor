@@ -34,7 +34,9 @@ G.Combat = (() => {
       m.t = 0.05;
       return;
     }
-    m.t = Math.max(0.05, m.cd * pl.cdMul);
+    // LAN: el buff 'cdr' (Danza Dragón) acorta la recarga, con tope del 50%.
+    const cdr = pl.buffs.cdr ? Math.min(0.5, pl.buffs.cdr.bonus) : 0;
+    m.t = Math.max(0.05, m.cd * pl.cdMul * (1 - cdr));
     pl.cast(m);
     if (G.Coop.active) G.Coop.cast(pl, m);
     // Vínculo: su icono destella en el HUD al lanzarse (uno que explota pegado al
@@ -196,7 +198,14 @@ G.Combat = (() => {
   }
 
   function buff(pl, m) {
-    pl.addBuff(m.stat, m.amount, m.dur, m.stacks | 0);
+    pl.addBuff(m.stat, m.amount, m.dur, m.stacks | 0, m.id);
+    // LAN (Danza Dragón): segundo stat opcional del potenciador.
+    if (m.stat2) pl.addBuff(m.stat2, m.amount2 || 0, m.dur, m.stacks | 0, m.id);
+    // LAN (Acua Aro Reforzado): al máximo de cargas, cura 20% cada 15 s.
+    if (m.id === 'aqua-ring' && m.evolved && pl.buffs.regen.n >= m.stacks && performance.now() - pl.aquaT > 15000) {
+      pl.aquaT = performance.now();
+      pl.heal(pl.maxHp * 0.2);
+    }
     const col = G.U.TYPE_COLOR[m.type];
     G.FX.ring(pl.x, pl.y, pl.r * 2.4, pl.r * 1.1, col, 0.35, 2.5);
     const vis = G.VFX.forMove(m);
@@ -524,12 +533,26 @@ G.Combat = (() => {
 
   // Golpe crítico (Mejoras → Golpe Crítico): x1,5 de daño, número naranja y grande.
   const CRIT_MUL = 1.5;
-  const isCrit = pl => !ghost && pl.critChance > 0 && Math.random() < pl.critChance;
+  // LAN (Danzas Reforzadas): SD +10% daño crítico por carga activa;
+  // DD +3% de ratio por carga activa (máx. +50% / +15% con 5).
+  const SD_CRIT_DMG = 0.1, DD_CRIT_CH = 0.03;
+  /** Cargas activas de un buff evolucionado (0 si no lo tiene evolucionado). */
+  function evoStacks(pl, id, stat) {
+    const m = pl.moves ? pl.moves.find(x => x.id === id && x.evolved) : null;
+    const b = m ? pl.buffs[stat] : null;
+    const s = b && b.by ? b.by[id] : null;
+    return s ? s.n : 0;
+  }
+  function isCrit(pl) {
+    if (ghost) return false;
+    const ch = (pl.critChance || 0) + DD_CRIT_CH * evoStacks(pl, 'dragon-dance', 'atk');
+    return ch > 0 && Math.random() < ch;
+  }
 
   function hit(pl, e, dmg, col, dx, dy, knock, m) {
     const k = typeK(m.type, e);
     const crit = isCrit(pl);
-    dmg *= k * (crit ? CRIT_MUL : 1);
+    dmg *= k * (crit ? CRIT_MUL * (1 + SD_CRIT_DMG * evoStacks(pl, 'swords-dance', 'atk')) : 1);
     e.hurt(dmg, col, dx, dy, knock, crit ? 'crit' : G.Types.label(G.Types.mult(m.type, e.types)));
     if (!ghost) pl.onDealt(dmg);
     pl.dmgDealt += dmg;
@@ -636,7 +659,7 @@ G.Combat = (() => {
         }
 
         const crit = isCrit(pl);
-        const k = (p.mtype ? typeK(p.mtype, e) : 1) * (crit ? CRIT_MUL : 1);
+        const k = (p.mtype ? typeK(p.mtype, e) : 1) * (crit ? CRIT_MUL * (1 + SD_CRIT_DMG * evoStacks(pl, 'swords-dance', 'atk')) : 1);
         e.hurt(p.dmg * k, p.color, p.vx || (e.x - pl.x), p.vy || (e.y - pl.y), p.knock,
                crit ? 'crit' : p.mtype ? G.Types.label(G.Types.mult(p.mtype, e.types)) : null);
         if (Math.random() < 0.5) G.FX.sp('impact', p.vis ? p.vis.pal : 'normal', e.x, e.y - e.bodyH * 0.5, { life: 0.12, scale: 1 });

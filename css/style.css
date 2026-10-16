@@ -388,6 +388,9 @@ label { display: block; font-size: 14px; color: var(--muted); margin: 8px 0 4px;
   padding: 12px 14px; transition: transform .08s, background .12s, border-color .12s;
 }
 .card:hover { background: rgba(255,255,255,.1); border-color: var(--edge); transform: translateX(4px); }
+/* LAN: carta de movimiento nuevo pendiente de confirmar */
+.card.armed { border-color: var(--gold); background: rgba(255,210,63,.12); }
+#lvl-confirm { color: var(--gold); font-weight: 700; }
 .card .ico { flex: 0 0 46px; height: 46px; border-radius: 10px; display: grid; place-items: center; font-size: 24px; }
 .card .txt { flex: 1; }
 .card .nm { font-weight: 700; font-size: 18px; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }

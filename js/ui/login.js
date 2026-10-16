@@ -24,44 +24,13 @@ G.LoginUI = (() => {
       $('login-err').textContent = '';
       $('forgot-note').classList.toggle('hidden');
     };
-    // Vincular Gmail para poder recuperar la cuenta (ver offerRecovery).
-    $('rec-link').onclick = async () => {
-      $('rec-err').textContent = '';
-      $('rec-link').disabled = true;
-      const r = await G.DB.linkGoogle();
-      $('rec-link').disabled = false;
-      if (!r.ok) { $('rec-err').textContent = r.error; return; }
-      $('scr-recover').classList.add('hidden');
-      G.UI.toast('¡Gmail vinculado! Si olvidas la contraseña, entra con Google.', 4500);
-    };
-    $('rec-later').onclick = () => $('scr-recover').classList.add('hidden');
-    $('rec-never').onclick = () => {
-      try { localStorage.setItem('ps.recover.no.' + G.DB.fb.uid, '1'); } catch (e) { /* nada */ }
-      $('scr-recover').classList.add('hidden');
-    };
-    $('btn-google').onclick = async () => {
-      $('login-err').textContent = '';
-      $('btn-google').disabled = true;
-      const r = await G.DB.loginWithGoogle();
-      $('btn-google').disabled = false;
-      if (!r.ok) { $('login-err').textContent = r.error; return; }
-      G.Flow.afterLogin();
-    };
   }
 
   /**
-   * Al entrar (o recién creada la cuenta) con nombre y contraseña, si aún no
-   * hay Gmail vinculado: "¿te da miedo perder tu cuenta?". Una vez por sesión,
-   * hasta que lo vincule o diga que no le vuelvan a preguntar.
+   * LAN: sin Google no hay vinculación de Gmail; no se ofrece nada.
+   * Se mantiene la función porque Flow la llama tras entrar.
    */
-  let offered = false;
-  function offerRecovery() {
-    if (offered || G.DB.mode !== 'cloud' || !G.DB.fb || !G.DB.nameAccount || G.DB.hasGoogle) return;
-    try { if (localStorage.getItem('ps.recover.no.' + G.DB.fb.uid)) return; } catch (e) { /* nada */ }
-    offered = true;
-    $('rec-err').textContent = '';
-    $('scr-recover').classList.remove('hidden');
-  }
+  function offerRecovery() {}
 
   /** Explica dónde se guarda la partida según el modo de la base de datos. */
   function modeNote() {
@@ -88,7 +57,6 @@ G.LoginUI = (() => {
     G.UI.chrome(false);
     G.UI.show('scr-login');
     if (!G.DB.storageOk) $('login-err').textContent = 'Este navegador no deja guardar datos: juega como invitado.';
-    $('btn-google').classList.toggle('hidden', G.DB.mode !== 'cloud');
     $('login-mode').textContent = modeNote();
     setTimeout(() => $('f-user').focus(), 50);
   }
