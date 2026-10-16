@@ -490,8 +490,8 @@ G.Game = (() => {
       return;
     }
     if (p.kind === 'coin') {
-      // LAN: oro base x10 (se muestra lo realmente ganado).
-      const g = p.value * 10;
+      // LAN: multiplicador de oro (lan-config.js; se muestra lo ganado).
+      const g = Math.max(1, Math.round(p.value * G.RATES.coins));
       pl.coins += g;
       G.FX.dmgText(who.x, who.y - who.bodyH - 6, '+' + g, '#ffd23f');
       return;

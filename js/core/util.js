@@ -1,6 +1,9 @@
 /* ============ util.js — helpers compartidos ============ */
 window.G = window.G || {};
 
+/* LAN: multiplicadores editables en lan-config.js (sin rebuild). */
+G.RATES = Object.assign({ xp: 1, coins: 1 }, window.LAN);
+
 /** Altura a la que vuelan proyectiles y efectos sobre el plano del suelo. */
 G.LIFT = 18;
 

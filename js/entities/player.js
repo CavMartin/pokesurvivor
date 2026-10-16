@@ -303,8 +303,8 @@ G.Player = class Player {
 
   /** Devuelve cuántos niveles ha subido (pueden ser varios de golpe). */
   gainXp(amount) {
-    // LAN: +50% de experiencia base sobre todo lo ganado.
-    this.xp += amount * this.xpMul * 1.5;
+    // LAN: multiplicador de experiencia (lan-config.js).
+    this.xp += amount * this.xpMul * G.RATES.xp;
     let leveled = 0;
     while (this.xp >= this.xpNext) {
       this.xp -= this.xpNext;
