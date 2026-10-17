@@ -14,14 +14,6 @@ NOTA: si algún día se regenera sprites-meta.js con fetch_sprites.py, hay que
 relanzar este script para reponer las entradas mega.
 
 Sin shiny de momento (el cargador cae a la mega normal automáticamente).
-
-Si una forma no existe o está incompleta en SpriteCollab, NO se usan
-alternativas (Showdown GIF, iconos PokéSprite, PokeAPI): son sprites
-frontales estáticos o de otro estilo y el motor necesita hojas estilo PMD
-(Idle/Walk/Attack/Shoot/Charge/Hurt/Faint, 8 direcciones cada una).
-En ese caso se avisa por consola: hay que buscar la hoja en los foros o el
-Discord de la comunidad y colocarla a mano en assets/pokemon/<clave>/ con
-su entrada en sprites-meta.js (mismo formato que las demás).
 """
 import io
 import json
@@ -51,8 +43,7 @@ def do_form(dex, form):
             return key, meta
     xml = F.fetch(f'{F.BASE}/{tag}/{sub}/AnimData.xml')
     if not xml:
-        print(f'  {key}: forma no disponible en SpriteCollab (ver sprites.pmdcollab.org,'
-              f' foros o Discord de la comunidad para una hoja estilo PMD)')
+        print(f'  {key}: sin AnimData.xml')
         return key, None
     anims, shadow = F.parse_animdata(xml.decode('utf-8', 'replace'))
     normal = F.download_set(f'{F.BASE}/{tag}/{sub}', out_dir, anims)
