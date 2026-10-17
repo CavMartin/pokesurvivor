@@ -8,19 +8,14 @@ G.Player = class Player {
    * @param mon   entrada de G.DEX
    * @param perks mejoras permanentes ya resueltas (ver data/upgrades.js)
    */
-  constructor(mon, perks = {}, shiny = false, mega = null) {
+  constructor(mon, perks = {}, shiny = false) {
     this.mon = mon;
     this.dex = mon.dex;
-    // LAN (megas): la especie no cambia; sólo sprite (sdex), tipos y stats.
-    this.mega = mega && mega.dex === mon.dex ? mega : null;
-    this.sdex = this.mega ? this.mega.key : mon.dex;
-    this.types = this.mega && this.mega.types ? this.mega.types.slice() : mon.types;
-    this.dispName = this.mega ? this.mega.name : mon.name;
-    this.shiny = shiny && G.Sprites.hasShiny(this.sdex);
-    this.anim = new G.Sprites.Animator(this.sdex, 1, this.shiny);
+    this.shiny = shiny && G.Sprites.hasShiny(mon.dex);
+    this.anim = new G.Sprites.Animator(mon.dex, 1, this.shiny);
     this.x = 0; this.y = 0;
-    this.r = G.Sprites.bodyRadius(this.sdex);
-    this.bodyH = G.Sprites.bodyHeight(this.sdex);
+    this.r = G.Sprites.bodyRadius(mon.dex);
+    this.bodyH = G.Sprites.bodyHeight(mon.dex);
 
     this.atkMul = perks.atkMul || 1;
     this.spdMul = perks.spdMul || 1;
@@ -33,11 +28,6 @@ G.Player = class Player {
 
     this.maxHp = mon.hp + (perks.hp || 0);
     this.hp = this.maxHp;
-    if (this.mega) {   // LAN: bonus genérico de la megaevolución (POC).
-      this.maxHp += this.mega.hp; this.hp = this.maxHp;
-      this.atkMul *= this.mega.atk; this.cdMul *= this.mega.cd;
-      this.dmgReduce += this.mega.def;
-    }
     this.baseSpd = mon.spd;
     this.baseAtk = mon.atk;
 
@@ -104,8 +94,8 @@ G.Player = class Player {
   get atk() { return this.baseAtk * this.atkMul * (1 + this.buffs.atk.bonus); }
   get spd() {
     const s = this.baseSpd * this.spdMul * (1 + this.buffs.spd.bonus) * (this.slowT > 0 ? 0.5 : 1);
-    const w = G.Weather.speedFor(this.types);
-    const slow = this.inLiquid ? G.World.liquidEffect(this.types).slow || 1 : 1;
+    const w = G.Weather.speedFor(this.mon.types);
+    const slow = this.inLiquid ? G.World.liquidEffect(this.mon.types).slow || 1 : 1;
     return s * slow * w;
   }
   get reduction() { return Math.min(0.8, this.dmgReduce + this.buffs.def.bonus); }
@@ -244,7 +234,7 @@ G.Player = class Player {
     if (this.invuln > 0 || this.dead) return;
     let eff = null;
     if (type) {
-      const k = G.Types.mult(type, this.types);
+      const k = G.Types.mult(type, this.mon.types);
       eff = G.Types.label(k);
       amount *= k * G.Weather.mult(type);
     }
@@ -379,7 +369,7 @@ G.Player = class Player {
     this.walking = ax !== 0 || ay !== 0;
     const s = this.spd;
     // Hielo: resbalas (la velocidad cambia despacio).
-    const slide = this.inLiquid && G.World.liquidEffect(this.types).slide;
+    const slide = this.inLiquid && G.World.liquidEffect(this.mon.types).slide;
     this.svx = slide ? G.U.damp(this.svx || 0, ax * s * 1.15, 1.6, dt) : ax * s;
     this.svy = slide ? G.U.damp(this.svy || 0, ay * s * 1.15, 1.6, dt) : ay * s;
     this.x += this.svx * dt;
@@ -390,7 +380,7 @@ G.Player = class Player {
     // --- terreno líquido ---
     this.inLiquid = G.World.isLiquid(this.x, this.y);
     if (this.inLiquid) {
-      const le = G.World.liquidEffect(this.types);
+      const le = G.World.liquidEffect(this.mon.types);
       if (le.dmg) {
         this.lavaTick -= dt;
         if (this.lavaTick <= 0) {
@@ -488,7 +478,7 @@ G.Player = class Player {
       ctx.beginPath(); ctx.ellipse(this.x, this.y, this.r * 1.5, this.r * 0.6, 0, 0, 6.2832); ctx.stroke();
       ctx.restore();
     }
-    G.Sprites.drawShadow(ctx, this.sdex, this.x, this.y);
+    G.Sprites.drawShadow(ctx, this.dex, this.x, this.y);
     // Poder de altar: aro de su color latiendo bajo los pies.
     if (this.power && !this.dead) {
       ctx.save();

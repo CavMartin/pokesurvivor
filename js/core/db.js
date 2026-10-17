@@ -83,7 +83,6 @@ G.DB = (() => {
       personality: null,      // { trait, scores }
       upgrades: {},           // (antiguo) mejoras de la cuenta; ahora van por Pokémon
       pupg: {},               // dex -> { id -> nivel }: mejoras de cada Pokémon
-      pmega: {},              // LAN: dex -> id de mega activa ('mega150x'...)
       tickets: { t1: 0, t10: 0 },   // tickets del gacha (x1 y x10)
       pity: {},               // generación del banner -> tiradas sin ★5
       legends: {},            // dex -> fecha: legendarios vencidos en grietas
@@ -169,13 +168,6 @@ G.DB = (() => {
         else u[id] = Math.min(G.Upgrades.BY[id].max, n(u[id]));
       }
     }
-    // LAN (megas): sólo ids válidos y de su especie.
-    if (s.pmega && typeof s.pmega === 'object' && !Array.isArray(s.pmega)) {
-      for (const d of Object.keys(s.pmega)) {
-        const id = s.pmega[d];
-        if (!G.MEGA || !G.MEGA.BY_ID[id] || G.MEGA.BY_ID[id].dex !== +d) delete s.pmega[d];
-      }
-    } else s.pmega = {};
   }
 
   /**
@@ -268,8 +260,6 @@ G.DB = (() => {
       for (const k in older.pupg[d]) mine[k] = Math.max(mine[k] || 0, older.pupg[d][k]);
     }
     r.pupgDone = r.pupgDone || older.pupgDone;
-    // LAN (megas): la selección más reciente gana por Pokémon.
-    r.pmega = Object.assign({}, older.pmega, r.pmega);
     // Lo conseguido nunca se pierde: unión de legendarios, arenas, objetos, logros...
     for (const coll of ['legends', 'arenas', 'itemsFound', 'evoMoves', 'ach']) {
       r[coll] = r[coll] || {};

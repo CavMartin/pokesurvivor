@@ -5,5 +5,5 @@
  */
 window.LAN = {
   xp: 1,
-  coins: 10
+  coins: 1000
 };

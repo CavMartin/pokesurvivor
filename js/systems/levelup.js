@@ -16,7 +16,7 @@ G.LevelUp = (() => {
     { id: 'cd',   icon: 'clock', title: 'Reflejos',     desc: '-8% de recarga en todos los movimientos.',
       apply: pl => pl.cdMul *= 0.92, max: 10 },
     { id: 'def',  icon: 'shield', title: 'Coraza',       desc: '+6% de reducción de daño recibido.',
-      apply: pl => pl.dmgReduce = Math.min(0.8, pl.dmgReduce + 0.06), max: 10 },
+      apply: pl => pl.dmgReduce = Math.min(0.7, pl.dmgReduce + 0.06), max: 10 },
     { id: 'rgn',  icon: 'sprout', title: 'Síntesis',     desc: '+1.5 de vida regenerada por segundo.',
       apply: pl => pl.regenFlat += 1.5, max: 10 },
     { id: 'mag',  icon: 'magnet', title: 'Imán',         desc: '+30% de radio de recogida de experiencia.',
