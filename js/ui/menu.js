@@ -40,10 +40,11 @@ G.MenuUI = (() => {
     G.UI.chrome(true);
     G.UI.show('scr-menu');
     G.UI.sprite($('menu-partner'), mega ? mega.key : mon.dex, { lively: true, scale: 4, hero: true, shiny: !mega && shiny });
-    $('menu-partner').style.setProperty('--stage-c', shiny && !mega ? '#9ae6ff' : G.U.TYPE_COLOR[mon.types[0]]);
+    const pTypes = mega && mega.types ? mega.types : mon.types;
+    $('menu-partner').style.setProperty('--stage-c', shiny && !mega ? '#9ae6ff' : G.U.TYPE_COLOR[pTypes[0]]);
     $('menu-partner').classList.toggle('shiny', shiny && !mega);
     $('menu-partner-name').innerHTML = G.MEGA.dispName(mon.dex, mega) + (!mega && shiny ? ' ' + G.Icons.html('shiny', 24) : '');
-    $('menu-partner-info').innerHTML = G.UI.typeChips(mon.types) + ' ' + G.UI.stars(mon.rarity);
+    $('menu-partner-info').innerHTML = G.UI.typeChips(pTypes) + ' ' + G.UI.stars(mon.rarity);
     // Normal / shiny a mano, aquí mismo (en el móvil no se encontraba en la ficha).
     const seg = $('menu-shiny');
     seg.classList.toggle('hidden', !G.DB.ownsShiny(mon.dex));
@@ -259,7 +260,11 @@ G.MenuUI = (() => {
     const box = $('upg-list');
     box.innerHTML = '';
     for (const u of G.Upgrades.LIST) {
-      if (u.mega && u.mega.dex !== upgDex) continue;   // LAN: megas sólo de su especie
+      // LAN: megas sólo de su especie y con sprites descargados.
+      if (u.mega) {
+        const me = G.MEGA.BY_ID[u.id];
+        if (!me || me.dex !== upgDex || !G.MEGA.hasSprites(me)) continue;
+      }
       const lvl = levels[u.id] || 0;
       const maxed = lvl >= u.max;
       const cost = maxed ? 0 : G.Upgrades.cost(u.id, lvl);

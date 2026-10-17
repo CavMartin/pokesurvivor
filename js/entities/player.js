@@ -11,9 +11,10 @@ G.Player = class Player {
   constructor(mon, perks = {}, shiny = false, mega = null) {
     this.mon = mon;
     this.dex = mon.dex;
-    // LAN (megas): la especie no cambia; sólo sprite (sdex) y stats.
+    // LAN (megas): la especie no cambia; sólo sprite (sdex), tipos y stats.
     this.mega = mega && mega.dex === mon.dex ? mega : null;
     this.sdex = this.mega ? this.mega.key : mon.dex;
+    this.types = this.mega && this.mega.types ? this.mega.types.slice() : mon.types;
     this.dispName = this.mega ? this.mega.name : mon.name;
     this.shiny = shiny && G.Sprites.hasShiny(this.sdex);
     this.anim = new G.Sprites.Animator(this.sdex, 1, this.shiny);
@@ -103,8 +104,8 @@ G.Player = class Player {
   get atk() { return this.baseAtk * this.atkMul * (1 + this.buffs.atk.bonus); }
   get spd() {
     const s = this.baseSpd * this.spdMul * (1 + this.buffs.spd.bonus) * (this.slowT > 0 ? 0.5 : 1);
-    const w = G.Weather.speedFor(this.mon.types);
-    const slow = this.inLiquid ? G.World.liquidEffect(this.mon.types).slow || 1 : 1;
+    const w = G.Weather.speedFor(this.types);
+    const slow = this.inLiquid ? G.World.liquidEffect(this.types).slow || 1 : 1;
     return s * slow * w;
   }
   get reduction() { return Math.min(0.8, this.dmgReduce + this.buffs.def.bonus); }
@@ -243,7 +244,7 @@ G.Player = class Player {
     if (this.invuln > 0 || this.dead) return;
     let eff = null;
     if (type) {
-      const k = G.Types.mult(type, this.mon.types);
+      const k = G.Types.mult(type, this.types);
       eff = G.Types.label(k);
       amount *= k * G.Weather.mult(type);
     }
@@ -378,7 +379,7 @@ G.Player = class Player {
     this.walking = ax !== 0 || ay !== 0;
     const s = this.spd;
     // Hielo: resbalas (la velocidad cambia despacio).
-    const slide = this.inLiquid && G.World.liquidEffect(this.mon.types).slide;
+    const slide = this.inLiquid && G.World.liquidEffect(this.types).slide;
     this.svx = slide ? G.U.damp(this.svx || 0, ax * s * 1.15, 1.6, dt) : ax * s;
     this.svy = slide ? G.U.damp(this.svy || 0, ay * s * 1.15, 1.6, dt) : ay * s;
     this.x += this.svx * dt;
@@ -389,7 +390,7 @@ G.Player = class Player {
     // --- terreno líquido ---
     this.inLiquid = G.World.isLiquid(this.x, this.y);
     if (this.inLiquid) {
-      const le = G.World.liquidEffect(this.mon.types);
+      const le = G.World.liquidEffect(this.types);
       if (le.dmg) {
         this.lavaTick -= dt;
         if (this.lavaTick <= 0) {

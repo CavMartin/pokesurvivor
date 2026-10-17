@@ -7,9 +7,11 @@
  */
 G.MEGA = (() => {
   const TABLE = {
+    // Tipos por forma (genérico POC: mismos bonus en las tres).
     150: [
-      { id: 'mega150x', form: 'x', key: '150mx', name: 'Mega-Mewtwo X', price: 10000, hp: 50, atk: 1.2, cd: 0.8, def: 0.2 },
-      { id: 'mega150y', form: 'y', key: '150my', name: 'Mega-Mewtwo Y', price: 10000, hp: 50, atk: 1.2, cd: 0.8, def: 0.2 },
+      { id: 'mega150x', form: 'x', key: '150mx', name: 'Mega-Mewtwo X', types: ['psychic', 'fighting'], price: 10000, hp: 50, atk: 1.2, cd: 0.8, def: 0.2 },
+      { id: 'mega150y', form: 'y', key: '150my', name: 'Mega-Mewtwo Y', types: ['psychic'], price: 10000, hp: 50, atk: 1.2, cd: 0.8, def: 0.2 },
+      { id: 'mega150o', form: 'o', key: '150mo', name: 'Mewtwo Oscuro', types: ['psychic', 'steel'], price: 10000, hp: 50, atk: 1.2, cd: 0.8, def: 0.2 },
     ]
   };
   const BY_ID = {};
@@ -44,11 +46,14 @@ G.MEGA = (() => {
     return n;
   }
 
+  /** ¿Tiene sprites descargados? (sin ellos la forma no se ofrece). */
+  function hasSprites(e) { return !!(e && G.SPRITE_META && G.SPRITE_META[e.key]); }
+
   /** Mega seleccionada y comprada para ese dex (o null). */
   function selected(save, dex) {
     const id = save && save.pmega && save.pmega[dex];
     const e = id && BY_ID[id];
-    if (!e || e.dex !== dex) return null;
+    if (!e || e.dex !== dex || !hasSprites(e)) return null;
     const lv = save && G.DB && G.DB.upgradesOf ? G.DB.upgradesOf(dex) : {};
     return lv[e.id] > 0 ? e : null;
   }
@@ -61,5 +66,5 @@ G.MEGA = (() => {
     return mega ? mega.name : (G.DEX_BY[dex] ? G.DEX_BY[dex].name : '');
   }
 
-  return { TABLE, BY_ID, of, needTotal, haveTotal, selected, active, dispName };
+  return { TABLE, BY_ID, of, needTotal, haveTotal, hasSprites, selected, active, dispName };
 })();

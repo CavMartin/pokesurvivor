@@ -24,10 +24,9 @@ import sys
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import fetch_sprites as F
 
-# dex -> { forma: subcarpeta en SpriteCollab }. X/Y asignado por aspecto
-# (0002 esbelta con cola larga = Y; 0003 robusta = X): si estuviera al revés,
-# se cambia aquí y se relanza.
-FORMS = {150: {'x': '0003', 'y': '0002'}}
+# dex -> { forma: subcarpeta en SpriteCollab }. Mapeo según tracker.json
+# de SpriteCollab (0001 Mega_X, 0002 Mega_Y, 0003 Shadow).
+FORMS = {150: {'x': '0001', 'y': '0002', 'o': '0003'}}
 KEYS = {dex: {form: f'{dex}m{form}' for form in forms} for dex, forms in FORMS.items()}
 
 
